@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>운동 트래커</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: #F3F4F6; min-height: 100vh; }
+
+  .tab-pill {
+    flex: 1; padding: 8px 4px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; border: none; cursor: pointer;
+    transition: all .18s; letter-spacing: -0.01em;
+  }
+  .tab-pill.active { background: #111827; color: #fff; box-shadow: 0 2px 8px rgba(17,24,39,.22); }
+  .tab-pill.inactive { background: #fff; color: #6B7280; }
+
+  .ex-card {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.04);
+    overflow: hidden; margin-bottom: 10px;
+  }
+  .ex-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 14px 8px; border-bottom: 1px solid #E5E7EB;
+  }
+  .ex-tag {
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 20px; letter-spacing: .03em; flex-shrink: 0;
+  }
+  .tag-cardio { background:#FEF3C7; color:#92400E; }
+  .tag-lower  { background:#DCFCE7; color:#166534; }
+  .tag-upper  { background:#FCE7F3; color:#9D174D; }
+  .tag-core   { background:#E0F2FE; color:#075985; }
+
+  .set-table-head {
+    display: grid; grid-template-columns: 36px 1fr 1fr 42px;
+    gap: 4px; padding: 5px 14px;
+    background: #F9FAFB; border-bottom: 1px solid #E5E7EB;
+  }
+  .set-table-head span {
+    font-size: 10px; font-weight: 700; color: #9CA3AF;
+    text-transform: uppercase; letter-spacing: .05em; text-align: center;
+  }
+  .set-table-head span:first-child { text-align: left; }
+
+  .set-row {
+    display: grid; grid-template-columns: 36px 1fr 1fr 42px;
+    gap: 4px; align-items: center;
+    padding: 5px 14px; border-bottom: 1px solid #F3F4F6;
+    transition: background .15s;
+  }
+  .set-row.done-row { background: #F0FDF4; }
+  .set-row:last-child { border-bottom: none; }
+
+  .set-num {
+    font-size: 12px; font-weight: 700; color: #6B7280;
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    background: #F3F4F6; flex-shrink: 0;
+  }
+
+  .ul-input {
+    width: 100%; border: none; border-bottom: 1.5px solid #E5E7EB;
+    background: transparent; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 600; color: #111827;
+    padding: 2px 2px 3px; text-align: center; outline: none;
+    transition: border-color .15s;
+  }
+  .ul-input:focus { border-bottom-color: #4F46E5; }
+  .ul-input::placeholder { color: #D1D5DB; font-weight: 400; }
+
+  .check-circle {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid #E5E7EB; background: #F3F4F6;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .18s; margin: 0 auto;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .check-circle.checked { background: #16A34A; border-color: #16A34A; color: #fff; }
+
+  .chip-row { display: flex; gap: 6px; padding: 8px 14px 10px; }
+  .chip {
+    flex: 1; padding: 6px 4px; border-radius: 8px; border: 1.5px solid #E5E7EB;
+    font-size: 12px; font-weight: 700; background: #fff; color: #6B7280;
+    cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .chip.easy.sel   { background: #D1FAE5; border-color: #10B981; color: #065F46; }
+  .chip.normal.sel { background: #FEF3C7; border-color: #F59E0B; color: #78350F; }
+  .chip.hard.sel   { background: #FEE2E2; border-color: #EF4444; color: #7F1D1D; }
+
+  .prog-track { background: #E5E7EB; border-radius: 99px; height: 7px; overflow: hidden; }
+  .prog-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, #4F46E5 0%, #818CF8 100%);
+    transition: width .5s cubic-bezier(.4,0,.2,1);
+  }
+
+  #timer-float {
+    position: fixed; bottom: 82px; left: 50%;
+    transform: translateX(-50%) translateY(0);
+    background: #111827; color: #fff;
+    border-radius: 40px; padding: 10px 20px 10px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.3); z-index: 999;
+    transition: opacity .25s, transform .25s; min-width: 200px;
+  }
+  #timer-float.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(16px); }
+  .t-ring { width: 38px; height: 38px; position: relative; flex-shrink: 0; }
+  .t-ring svg { transform: rotate(-90deg); }
+  .t-ring .tbg { stroke: rgba(255,255,255,.15); }
+  .t-ring .tprog { stroke: #FCD34D; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .t-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; }
+  .t-close { margin-left: auto; background: rgba(255,255,255,.12); border: none; color: #fff; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  #bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,.95); backdrop-filter: blur(12px);
+    border-top: 1px solid #E5E7EB;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; z-index: 100;
+  }
+  .btn-copy {
+    flex: 1; background: #111827; color: #fff;
+    border: none; border-radius: 12px; padding: 13px 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-copy:active { opacity: .85; transform: scale(.97); }
+  .btn-reset {
+    background: #fff; color: #EF4444; border: 1.5px solid #FECACA;
+    border-radius: 12px; padding: 13px 14px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap; transition: background .15s;
+  }
+  .btn-reset:active { background: #FFF5F5; }
+
+  #toast {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    background: #111827; color: #fff; padding: 10px 20px;
+    border-radius: 40px; font-size: 13px; font-weight: 600;
+    z-index: 9999; opacity: 0; transition: opacity .25s; white-space: nowrap;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- Floating Timer -->
+<div id="timer-float" class="hidden">
+  <div class="t-ring">
+    <svg width="38" height="38" viewBox="0 0 38 38">
+      <circle class="tbg" cx="19" cy="19" r="15" fill="none" stroke-width="3.5"/>
+      <circle class="tprog" id="t-prog" cx="19" cy="19" r="15" fill="none" stroke-width="3.5"
+        stroke-dasharray="94.25" stroke-dashoffset="0"/>
+    </svg>
+    <div class="t-num" id="t-num">60</div>
+  </div>
+  <div>
+    <div style="font-size:10px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em;">REST</div>
+    <div style="font-size:18px;font-weight:900;line-height:1;" id="t-big">01:00</div>
+  </div>
+  <button class="t-close" onclick="stopTimer()">✕</button>
+</div>
+
+<!-- Bottom sticky bar -->
+<div id="bottom-bar">
+  <button class="btn-copy" id="btn-copy-main">📋 기록 복사 (AI 분석용)</button>
+  <button class="btn-reset" id="btn-reset-main">🗑 초기화</button>
+</div>
+
+<!-- App -->
+<div x-data="app()" x-init="init()" id="main-app" class="max-w-lg mx-auto px-3 pt-4 pb-32">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <p style="font-size:10px;font-weight:700;color:#9CA3AF;letter-spacing:.08em;text-transform:uppercase;margin:0;">Gym Tracker</p>
+      <h1 style="font-size:20px;font-weight:900;color:#111827;letter-spacing:-.03em;line-height:1.2;margin:0;">오늘의 운동</h1>
+    </div>
+    <div style="background:#EEF2FF;color:#4338CA;font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;" x-text="todayStr"></div>
+  </div>
+
+  <!-- Progress -->
+  <div class="mb-4">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px;font-weight:600;color:#6B7280;">
+      <span>오늘의 진행도</span>
+      <span x-text="completedSets() + ' / ' + totalSets() + ' 세트'"></span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" :style="'width:' + progressPct() + '%'"></div>
+    </div>
+    <div style="font-size:10px;color:#9CA3AF;text-align:right;margin-top:2px;" x-text="progressPct() + '%'"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:6px;background:#E5E7EB;padding:4px;border-radius:13px;margin-bottom:14px;">
+    <template x-for="(day, idx) in days" :key="idx">
+      <button class="tab-pill" :class="activeTab===idx ? 'active' : 'inactive'"
+        @click="activeTab=idx; saveData()">
+        <div x-text="day.short"></div>
+        <div style="font-size:10px;font-weight:500;opacity:.7;" x-text="day.sub"></div>
+      </button>
+    </template>
+  </div>
+
+  <!-- Day subtitle -->
+  <div style="margin-bottom:10px;">
+    <p style="font-size:10px;font-weight:700;color:#6366F1;letter-spacing:.04em;text-transform:uppercase;margin:0 0 2px;" x-text="days[activeTab].theme"></p>
+    <p style="font-size:15px;font-weight:800;color:#111827;margin:0;" x-text="days[activeTab].title"></p>
+  </div>
+
+  <!-- Exercise Cards -->
+  <template x-for="(ex, exIdx) in days[activeTab].exercises" :key="exIdx">
+    <div>
+      <!-- Cardio -->
+      <div class="ex-card" x-show="ex.sets === 0">
+        <div class="ex-header">
+          <span class="ex-tag" :class="ex.tagClass" x-text="ex.tag"></span>
+          <span style="font-size:13px;font-weight:700;color:#111827;" x-text="ex.name"></span>
+        </div>
+        <div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:12px;color:#6B7280;" x-text="ex.note || '유산소'"></span>
+          <span style="font-size:11px;background:#FEF9C3;color:#854D0E;padding:3px 9px;border-radius:20px;font-weight:700;">유산소</span>
+        </div>
+      </div>
+
+      <!-- Strength -->
+      <div class="ex-card" x-show="ex.sets > 0">
+        <div class="ex-header">
+          <span class="ex-tag" :class="ex.tagClass" x-text="ex.tag"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="ex.name"></div>
+            <div style="font-size:10px;color:#9CA3AF;margin-top:1px;" x-text="ex.note" x-show="ex.note"></div>
+          </div>
+          <div style="flex-shrink:0;text-align:right;">
+            <div style="font-size:10px;color:#9CA3AF;font-weight:600;">목표</div>
+            <div style="font-size:12px;font-weight:800;color:#4F46E5;" x-text="ex.reps + '회×' + ex.sets + 'set'"></div>
+          </div>
+        </div>
+
+        <!-- Table head -->
+        <div class="set-table-head">
+          <span>SET</span>
+          <span>kg</span>
+          <span>reps</span>
+          <span>완료</span>
+        </div>
+
+        <!-- Set rows -->
+        <template x-for="s in ex.sets" :key="s">
+          <div class="set-row" :class="getData(activeTab, exIdx, 'set_'+(s-1)) ? 'done-row' : ''">
+            <div class="set-num"
+              :style="getData(activeTab, exIdx, 'set_'+(s-1)) ? 'background:#D1FAE5;color:#065F46;' : ''"
+              x-text="s"></div>
+            <input type="number" inputmode="decimal" placeholder="—"
+              class="ul-input"
+              :value="getData(activeTab, exIdx, 'weight_'+(s-1))"
+              @input="setData(activeTab, exIdx, 'weight_'+(s-1), $event.target.value)">
+            <input type="number" inputmode="numeric" placeholder="—"
+              class="ul-input"
+              :value="getData(activeTab, exIdx, 'reps_'+(s-1))"
+              @input="setData(activeTab, exIdx, 'reps_'+(s-1), $event.target.value)">
+            <div class="check-circle" :class="getData(activeTab, exIdx, 'set_'+(s-1)) ? 'checked' : ''"
+              @click="toggleSet(activeTab, exIdx, s-1)">
+              <span x-show="getData(activeTab, exIdx, 'set_'+(s-1))">✓</span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Difficulty chips -->
+        <div class="chip-row">
+          <button class="chip easy" :class="getData(activeTab, exIdx, 'feedback')==='쉬움' ? 'sel' : ''"
+            @click="setData(activeTab, exIdx, 'feedback', getData(activeTab, exIdx, 'feedback')==='쉬움' ? '' : '쉬움')">😌 쉬움</button>
+          <button class="chip normal" :class="getData(activeTab, exIdx, 'feedback')==='보통' ? 'sel' : ''"
+            @click="setData(activeTab, exIdx, 'feedback', getData(activeTab, exIdx, 'feedback')==='보통' ? '' : '보통')">💪 보통</button>
+          <button class="chip hard" :class="getData(activeTab, exIdx, 'feedback')==='어려움' ? 'sel' : ''"
+            @click="setData(activeTab, exIdx, 'feedback', getData(activeTab, exIdx, 'feedback')==='어려움' ? '' : '어려움')">🔥 어려움</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <div style="height:20px;"></div>
+</div>
+
+<script>
+/* ── Timer ── */
+const CIRC = 2 * Math.PI * 15;
+let timerInterval = null, timerSecs = 60;
+
+function startTimer() {
+  stopTimer(); timerSecs = 60; updateTimerUI();
+  document.getElementById('timer-float').classList.remove('hidden');
+  timerInterval = setInterval(() => {
+    timerSecs--;
+    if (timerSecs <= 0) {
+      timerSecs = 0; updateTimerUI(); stopTimer();
+      if (navigator.vibrate) navigator.vibrate([150,80,150]);
+    } else updateTimerUI();
+  }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('timer-float').classList.add('hidden');
+}
+function updateTimerUI() {
+  const pct = timerSecs / 60;
+  document.getElementById('t-prog').style.strokeDashoffset = CIRC * (1 - pct);
+  document.getElementById('t-num').textContent = timerSecs;
+  const m = String(Math.floor(timerSecs/60)).padStart(2,'0');
+  const s = String(timerSecs%60).padStart(2,'0');
+  document.getElementById('t-big').textContent = m+':'+s;
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* Wire bottom bar after Alpine loads */
+document.addEventListener('alpine:initialized', () => {
+  const appEl = document.getElementById('main-app');
+  document.getElementById('btn-copy-main').onclick = () => appEl._x_dataStack[0].copyToClipboard();
+  document.getElementById('btn-reset-main').onclick = () => appEl._x_dataStack[0].resetConfirm();
+});
+
+/* ── App ── */
+function app() {
+  const DAYS = [
+    {
+      label:'월요일', short:'월요일', sub:'Push', title:'하체 & 가슴 중심', theme:'Push Day',
+      exercises:[
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'15분, 가벼운 강도' },
+        { name:'시티드 레그프레스', tag:'하체', tagClass:'tag-lower', reps:15, sets:3, note:'발 위치를 높게 두어 무릎 부담을 줄입니다.' },
+        { name:'체스트 프레스', tag:'가슴', tagClass:'tag-upper', reps:12, sets:3, note:'' },
+        { name:'숄더 프레스', tag:'어깨', tagClass:'tag-upper', reps:12, sets:3, note:'' },
+        { name:'힙 어브덕션 (바깥쪽)', tag:'하체', tagClass:'tag-lower', reps:20, sets:3, note:'중둔근 강화로 무릎 안정성을 돕습니다.' },
+        { name:'덤벨 암컬 & 크런치 머신', tag:'팔/복근', tagClass:'tag-core', reps:15, sets:3, note:'' },
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'20분, 중간 강도' },
+      ]
+    },
+    {
+      label:'수요일', short:'수요일', sub:'Pull', title:'등 & 어깨 중심', theme:'Pull Day',
+      exercises:[
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'15분' },
+        { name:'랫풀다운', tag:'등', tagClass:'tag-upper', reps:12, sets:3, note:'' },
+        { name:'시티드 로우', tag:'등', tagClass:'tag-upper', reps:12, sets:3, note:'허리가 굽지 않게 복압을 유지합니다.' },
+        { name:'펙덱 플라이', tag:'가슴', tagClass:'tag-upper', reps:15, sets:3, note:'' },
+        { name:'레터럴 레이즈 머신', tag:'어깨', tagClass:'tag-upper', reps:15, sets:3, note:'' },
+        { name:'시티드 레그 익스텐션', tag:'하체', tagClass:'tag-lower', reps:20, sets:2, note:'가장 가벼운 무게 / 재활 목적으로 천천히 수행합니다.' },
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'20분, 인터벌 (1분 빠르게 + 2분 보통)' },
+      ]
+    },
+    {
+      label:'금요일', short:'금요일', sub:'Balance', title:'하체 & 어깨 후면', theme:'Balance Day',
+      exercises:[
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'15분' },
+        { name:'힙 어덕션 (안쪽)', tag:'하체', tagClass:'tag-lower', reps:20, sets:3, note:'' },
+        { name:'시티드 레그 컬', tag:'하체', tagClass:'tag-lower', reps:15, sets:3, note:'무릎 뒤쪽 근육을 강화하여 관절을 보호합니다.' },
+        { name:'리어 델토이드', tag:'어깨', tagClass:'tag-upper', reps:15, sets:3, note:'어깨 후면과 등 상부를 함께 강화합니다.' },
+        { name:'덤벨 스쿼트', tag:'전신', tagClass:'tag-lower', reps:12, sets:3, note:'덤벨을 가슴 앞에 들고 허리를 세운 채 내려갑니다.' },
+        { name:'크런치 머신', tag:'복근', tagClass:'tag-core', reps:20, sets:3, note:'' },
+        { name:'좌식 사이클', tag:'유산소', tagClass:'tag-cardio', reps:0, sets:0, note:'30분, 일정한 속도로 체지방 연소' },
+      ]
+    }
+  ];
+
+  const TODAY = new Date();
+  const DOW = TODAY.getDay();
+  const tabMap = {1:0, 3:1, 5:2};
+  const defaultTab = tabMap[DOW] !== undefined ? tabMap[DOW] : 0;
+  const dateKey = TODAY.toISOString().slice(0,10);
+
+  return {
+    days: DAYS,
+    activeTab: defaultTab,
+    todayStr: TODAY.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'}),
+    workoutData: {},
+
+    init() {
+      const saved = localStorage.getItem('wt2_' + dateKey);
+      if (saved) { try { this.workoutData = JSON.parse(saved); } catch(e){} }
+      const savedTab = localStorage.getItem('wt2_tab_' + dateKey);
+      if (savedTab !== null) this.activeTab = parseInt(savedTab);
+    },
+
+    key(d, e, f) { return d+'_'+e+'_'+f; },
+    getData(d, e, f) { return this.workoutData[this.key(d,e,f)] || ''; },
+    setData(d, e, f, v) { this.workoutData[this.key(d,e,f)] = v; this.saveData(); },
+
+    toggleSet(d, e, s) {
+      const k = this.key(d, e, 'set_'+s);
+      this.workoutData[k] = !this.workoutData[k];
+      this.saveData();
+      if (this.workoutData[k]) startTimer(); else stopTimer();
+    },
+
+    saveData() {
+      localStorage.setItem('wt2_' + dateKey, JSON.stringify(this.workoutData));
+      localStorage.setItem('wt2_tab_' + dateKey, this.activeTab);
+    },
+
+    completedSets() {
+      let c = 0;
+      this.days[this.activeTab].exercises.forEach((ex, ei) => {
+        for (let s = 0; s < ex.sets; s++)
+          if (this.workoutData[this.key(this.activeTab, ei, 'set_'+s)]) c++;
+      });
+      return c;
+    },
+
+    totalSets() {
+      return this.days[this.activeTab].exercises.reduce((a, ex) => a + ex.sets, 0);
+    },
+
+    progressPct() {
+      const t = this.totalSets();
+      return t > 0 ? Math.round(this.completedSets() / t * 100) : 0;
+    },
+
+    copyToClipboard() {
+      const day = this.days[this.activeTab];
+      let lines = [];
+      lines.push('📅 ' + this.todayStr + ' 운동 기록');
+      lines.push('📌 ' + day.title + ' (' + day.theme + ')');
+      lines.push('');
+      day.exercises.forEach((ex, ei) => {
+        lines.push('▶ ' + ex.name + ' [' + ex.tag + ']');
+        if (ex.sets > 0) {
+          let doneCount = 0;
+          for (let s = 0; s < ex.sets; s++) {
+            const done = !!this.workoutData[this.key(this.activeTab, ei, 'set_'+s)];
+            const w = this.getData(this.activeTab, ei, 'weight_'+s);
+            const r = this.getData(this.activeTab, ei, 'reps_'+s);
+            if (done) doneCount++;
+            lines.push('  세트'+(s+1)+': '+(w||'-')+'kg / '+(r||'-')+'회 '+(done?'✓':'○'));
+          }
+          lines.push('  완료: '+doneCount+'/'+ex.sets+'세트');
+          const fb = this.getData(this.activeTab, ei, 'feedback');
+          if (fb) lines.push('  난이도: ' + fb);
+        } else {
+          lines.push('  → ' + (ex.note || '유산소'));
+        }
+        lines.push('');
+      });
+      lines.push('─────────────────');
+      lines.push('총 완료: ' + this.completedSets() + ' / ' + this.totalSets() + '세트 (' + this.progressPct() + '%)');
+
+      navigator.clipboard.writeText(lines.join('\n'))
+        .then(() => showToast('✅ 클립보드에 복사됐어요!'))
+        .catch(() => showToast('❌ 복사 실패 — 직접 선택해 주세요'));
+    },
+
+    resetConfirm() {
+      if (confirm('오늘 기록을 모두 초기화할까요?')) {
+        this.workoutData = {};
+        this.saveData();
+        stopTimer();
+        showToast('🗑 초기화 완료');
+      }
+    }
+  };
+}
+</script>
+</body>
+</html>
